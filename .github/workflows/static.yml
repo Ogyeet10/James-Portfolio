@@ -4,7 +4,7 @@ name: Deploy static content to Pages
 on:
   # Runs on pushes targeting the default branch
   push:
-    branches: ["main"]
+    branches: ["main", "FixTheShit"]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -24,6 +24,7 @@ concurrency:
 jobs:
   # Single deploy job since we're just deploying
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -39,5 +40,30 @@ jobs:
           # Upload entire repository
           path: '.'
       - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/FixTheShit'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare staging folder
+        run: |
+          rm -rf staging
+          mkdir staging
+          rsync -av --exclude='.git*' --exclude='.github' . staging/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload staging artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: staging
+
+      - name: Deploy to GitHub Pages (staging)
         id: deployment
         uses: actions/deploy-pages@v4
